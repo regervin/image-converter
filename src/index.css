@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  input[type="text"],
+  input[type="date"],
+  textarea,
+  select {
+    @apply border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500;
+  }
+}
