@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32px" height="32px" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Image Converter</title>
+    <g id="Icon" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#3B82F6" x="0" y="0" width="32" height="32" rx="8"></rect>
+        <path d="M24,8 L24,24 L8,24 L8,8 L24,8 Z M22,10 L10,10 L10,22 L22,22 L22,10 Z" fill="#FFFFFF" fill-rule="nonzero"></path>
+        <path d="M14,14 C15.1045695,14 16,13.1045695 16,12 C16,10.8954305 15.1045695,10 14,10 C12.8954305,10 12,10.8954305 12,12 C12,13.1045695 12.8954305,14 14,14 Z" fill="#FFFFFF"></path>
+        <path d="M21,20 L11,20 L14,16 L16,18 L19,14 L21,16 L21,20 Z" fill="#FFFFFF"></path>
+    </g>
+</svg>
