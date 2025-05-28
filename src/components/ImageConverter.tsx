@@ -65,16 +65,15 @@ const ImageConverter: React.FC = () => {
   };
 
   const handleConvert = async () => {
-    if (!selectedImage) return;
+    if (!selectedImage || !previewUrl) return;
     
     setIsConverting(true);
     
     try {
-      // In a real app, you would send the image to a server for conversion
-      // or use a library like browser-image-compression
-      // For this demo, we'll simulate conversion by creating a canvas
-      
+      // Create a new image object
       const img = new Image();
+      
+      // Set up the onload handler before setting the src
       img.onload = () => {
         const canvas = document.createElement('canvas');
         let width = img.width;
@@ -96,14 +95,27 @@ const ImageConverter: React.FC = () => {
           // Convert to the selected format with quality
           const format = `image/${options.format}`;
           const quality = options.quality / 100;
+          
+          // Generate the data URL with the proper format and quality
           const dataUrl = canvas.toDataURL(format, quality);
           
+          // Set the converted URL state
           setConvertedUrl(dataUrl);
+          setIsConverting(false);
+        } else {
+          console.error('Could not get canvas context');
           setIsConverting(false);
         }
       };
       
-      img.src = previewUrl as string;
+      // Handle errors
+      img.onerror = () => {
+        console.error('Error loading image');
+        setIsConverting(false);
+      };
+      
+      // Set the source to trigger loading
+      img.src = previewUrl;
     } catch (error) {
       console.error('Error converting image:', error);
       setIsConverting(false);
@@ -113,12 +125,19 @@ const ImageConverter: React.FC = () => {
   const handleDownload = () => {
     if (!convertedUrl) return;
     
-    const link = document.createElement('a');
-    link.href = convertedUrl;
-    link.download = `converted-image.${options.format}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // Create a temporary anchor element
+      const link = document.createElement('a');
+      link.href = convertedUrl;
+      link.download = `converted-image.${options.format}`;
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+    }
   };
 
   const handleOptionChange = (
