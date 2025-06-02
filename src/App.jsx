@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { saveAs } from 'file-saver';
 
 function App() {
@@ -9,6 +9,10 @@ function App() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [fileInfo, setFileInfo] = useState(null);
+  const [quality, setQuality] = useState(90);
+  const [estimatedSize, setEstimatedSize] = useState(null);
+  const [convertedBlob, setConvertedBlob] = useState(null);
+  const [convertedFileName, setConvertedFileName] = useState('');
   const fileInputRef = useRef(null);
 
   const formatOptions = [
@@ -18,6 +22,47 @@ function App() {
     { value: 'bmp', label: 'BMP (.bmp)' },
     { value: 'gif', label: 'GIF (.gif)' }
   ];
+
+  // Update estimated size when quality or selected file changes
+  useEffect(() => {
+    if (selectedFile && ['jpeg', 'webp'].includes(targetFormat)) {
+      estimateFileSize();
+    }
+  }, [quality, selectedFile, targetFormat]);
+
+  const estimateFileSize = () => {
+    if (!selectedFile) return;
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      
+      // Only JPEG and WebP support quality settings
+      if (['jpeg', 'webp'].includes(targetFormat)) {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            // Estimate size based on quality
+            // This is a rough estimate: original size * (quality/100)
+            const estimatedBytes = blob.size * (quality / 100);
+            setEstimatedSize(formatFileSize(estimatedBytes));
+          }
+        }, `image/${targetFormat}`, quality / 100);
+      } else {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            setEstimatedSize(formatFileSize(blob.size));
+          }
+        }, `image/${targetFormat}`);
+      }
+    };
+    
+    img.src = previewUrl;
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -30,6 +75,8 @@ function App() {
     // Reset states
     setError('');
     setSuccess('');
+    setConvertedBlob(null);
+    setConvertedFileName('');
 
     // Check if file is an image
     if (!file.type.match('image.*')) {
@@ -87,11 +134,29 @@ function App() {
     fileInputRef.current.click();
   };
 
+  const handleFormatChange = (e) => {
+    const newFormat = e.target.value;
+    setTargetFormat(newFormat);
+    
+    // Reset quality to default for formats that don't support quality
+    if (!['jpeg', 'webp'].includes(newFormat)) {
+      setQuality(90);
+      setEstimatedSize(null);
+    }
+    
+    // Clear converted blob when format changes
+    setConvertedBlob(null);
+    setConvertedFileName('');
+    setSuccess('');
+  };
+
   const convertImage = () => {
     if (!selectedFile) return;
 
     setError('');
     setSuccess('');
+    setConvertedBlob(null);
+    setConvertedFileName('');
 
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -108,6 +173,10 @@ function App() {
       try {
         // Convert canvas to desired format
         const mimeType = `image/${targetFormat}`;
+        
+        // Apply quality setting for formats that support it
+        const qualityOption = ['jpeg', 'webp'].includes(targetFormat) ? quality / 100 : undefined;
+        
         canvas.toBlob((blob) => {
           if (!blob) {
             setError(`Failed to convert to ${targetFormat.toUpperCase()}`);
@@ -119,11 +188,12 @@ function App() {
           const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
           const newFileName = `${baseName}.${targetFormat}`;
           
-          // Save the file
-          saveAs(blob, newFileName);
+          // Store the blob and filename for later download
+          setConvertedBlob(blob);
+          setConvertedFileName(newFileName);
           
-          setSuccess(`Image successfully converted to ${targetFormat.toUpperCase()}`);
-        }, mimeType);
+          setSuccess(`Image successfully converted to ${targetFormat.toUpperCase()} (${formatFileSize(blob.size)})`);
+        }, mimeType, qualityOption);
       } catch (err) {
         setError(`Error converting image: ${err.message}`);
       }
@@ -135,6 +205,15 @@ function App() {
     
     img.src = previewUrl;
   };
+
+  const downloadImage = () => {
+    if (convertedBlob && convertedFileName) {
+      saveAs(convertedBlob, convertedFileName);
+    }
+  };
+
+  // Determine if quality slider should be shown
+  const showQualitySlider = selectedFile && ['jpeg', 'webp'].includes(targetFormat);
 
   return (
     <div className="container">
@@ -178,7 +257,7 @@ function App() {
                   id="format-select" 
                   className="format-select"
                   value={targetFormat}
-                  onChange={(e) => setTargetFormat(e.target.value)}
+                  onChange={handleFormatChange}
                 >
                   {formatOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -188,13 +267,46 @@ function App() {
                 </select>
               </div>
               
-              <button 
-                className="convert-button"
-                onClick={convertImage}
-                disabled={!selectedFile}
-              >
-                Convert Image
-              </button>
+              {showQualitySlider && (
+                <div className="quality-control">
+                  <label htmlFor="quality-slider" className="quality-label">
+                    Quality: {quality}%
+                  </label>
+                  <input
+                    id="quality-slider"
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={quality}
+                    onChange={(e) => setQuality(parseInt(e.target.value))}
+                    className="quality-slider"
+                  />
+                  {estimatedSize && (
+                    <div className="estimated-size">
+                      Estimated size: {estimatedSize}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className="button-group">
+                <button 
+                  className="convert-button"
+                  onClick={convertImage}
+                  disabled={!selectedFile}
+                >
+                  Convert Image
+                </button>
+                
+                {convertedBlob && (
+                  <button 
+                    className="download-button"
+                    onClick={downloadImage}
+                  >
+                    Download Converted Image
+                  </button>
+                )}
+              </div>
               
               <div className="preview-container">
                 <h3 className="preview-title">Image Preview</h3>
